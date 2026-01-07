@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, FlatList, StyleSheet, Text } from 'react-native';
-import { AnimeCard } from '../components/AnimeCard';
+import { StickerCard } from '../components/StickerCard';
 import { ANIME_PACKS } from '../data/mockData';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../contexts/ThemeContext';
@@ -14,7 +14,17 @@ export const AnimeDetailsScreen = ({ route, navigation }) => {
     const animePacks = ANIME_PACKS.filter(pack => pack.title === animeTitle);
 
     const renderItem = ({ item }) => (
-        <AnimeCard item={item} />
+        <StickerCard
+            packageTitle={`${item.title} Pack`}
+            animeTitle={item.title}
+            animeCover={item.image}
+            mainIcon={item.image}
+            stickers={item.stickers}
+            totalStickers={item.stickers.length}
+            onSteal={() => console.log('Steal', item.id)}
+            onLike={() => console.log('Like', item.id)}
+            onAnimePress={() => { }} // Already on details
+        />
     );
 
     return (

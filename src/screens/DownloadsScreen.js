@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, FlatList, StyleSheet, Text } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
-import { AnimeCard } from '../components/AnimeCard';
+import { StickerCard } from '../components/StickerCard';
 import { ANIME_PACKS } from '../data/mockData';
 import { useTranslation } from 'react-i18next';
 
@@ -13,7 +13,18 @@ export const DownloadsScreen = ({ navigation }) => {
     const downloadedPacks = ANIME_PACKS;
 
     const renderItem = ({ item }) => (
-        <AnimeCard item={item} />
+        <StickerCard
+            packageTitle={`${item.title} Pack`}
+            animeTitle={item.title}
+            animeCover={item.image}
+            mainIcon={item.image}
+            stickers={item.stickers}
+            totalStickers={item.stickers.length}
+            onSteal={() => console.log('Steal', item.title)}
+            onLike={() => console.log('Like', item.title)}
+            onAnimePress={() => console.log('Anime', item.title)}
+            isLiked={false} // Default for mock
+        />
     );
 
     return (
