@@ -18,9 +18,7 @@ export const DownloadsScreen = ({ navigation }) => {
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
-            <View style={styles.header}>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>{t('download')}</Text>
-            </View>
+
 
             <FlatList
                 data={downloadedPacks}
@@ -36,16 +34,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    header: {
-        padding: 16,
-        alignItems: 'center',
-        borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
-    },
-    headerTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-    },
+
     list: {
         padding: 16,
     },

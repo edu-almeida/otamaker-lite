@@ -359,7 +359,6 @@ export const SearchScreen = ({ navigation }) => {
 
     return (
         <View style={[styles.screenContainer, { backgroundColor: colors.background }]}>
-            <Header />
             <SearchBar
                 searchQuery={searchQuery}
                 onChangeText={setSearchQuery}
