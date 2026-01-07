@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Animated, Easing } from 'react-native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -14,72 +14,77 @@ import { AnimeDetailsScreen } from '../screens/AnimeDetailsScreen';
 import { SplashScreen } from '../screens/SplashScreen';
 
 import { HomeIcon, SearchIcon, DownloadIcon } from '../components/TabIcons';
-import { GlobalHeader } from '../components/GlobalHeader'; // Import GlobalHeader
+import { GlobalHeader } from '../components/GlobalHeader';
 import { useTheme } from '../contexts/ThemeContext';
 
-const Tab = createBottomTabNavigator();
+const Tab = createMaterialTopTabNavigator();
 const Stack = createNativeStackNavigator();
 
-// --- Bubble Tab Bar Logic ---
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+// Constant config for the slider
+const TAB_COUNT = 3;
+const TAB_WIDTH = SCREEN_WIDTH / TAB_COUNT;
+const SLIDER_WIDTH = TAB_WIDTH - 24;
+
 const TabButton = ({ accessibilityState, children, onPress, icon, label, isFocused }) => {
-    const { colors, borderRadius } = useTheme();
+    const { colors } = useTheme();
+    // Animation for Text Fade In
     const animation = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
         Animated.timing(animation, {
             toValue: isFocused ? 1 : 0,
             duration: 300,
-            useNativeDriver: false, // width/color interp needs false
+            useNativeDriver: true,
             easing: Easing.out(Easing.cubic),
         }).start();
     }, [isFocused]);
 
-    const backgroundColor = animation.interpolate({
-        inputRange: [0, 1],
-        outputRange: ['transparent', colors.primaryLight + '20'] // 20% opacity of primary light or just primary with opacity
-    });
-
-    // Fallback if primaryLight is not distinct enough, use primary with low opacity
-    const activeBgColor = colors.primary + '15'; // 15% opacity hex
-
     return (
         <TouchableOpacity
             onPress={onPress}
-            activeOpacity={0.8}
+            activeOpacity={1}
             accessibilityRole="button"
             style={styles.tabButton}
         >
-            <Animated.View style={[
-                styles.tabBubble,
-                {
-                    backgroundColor: isFocused ? activeBgColor : 'transparent',
-                    borderRadius: borderRadius.round, // Pill shape
-                    paddingHorizontal: isFocused ? 16 : 0,
-                }
-            ]}>
-                {/* Icon is usually passed as children by React Nav, but we want custom layout */}
-                {/* We will ignore 'children' passed by Nav and use our own structure */}
+            <View style={styles.tabContent}>
                 {icon({
                     color: isFocused ? colors.primary : colors.textSecondary,
                     focused: isFocused
                 })}
 
+                {/* Only render label if focused, with opacity fade */}
                 {isFocused && (
-                    <Text style={[styles.tabLabel, { color: colors.primary, marginLeft: 8 }]}>
+                    <Animated.Text
+                        numberOfLines={1}
+                        style={[
+                            styles.tabLabel,
+                            {
+                                color: colors.primary,
+                                opacity: animation,
+                            }
+                        ]}
+                    >
                         {label}
-                    </Text>
+                    </Animated.Text>
                 )}
-            </Animated.View>
+            </View>
         </TouchableOpacity>
     );
 };
 
-// Custom Tab Bar using standard component prop
-const BubbleTabBar = ({ state, descriptors, navigation }) => {
-    const { colors, shadows } = useTheme();
+// Custom Tab Bar using standard component prop + position
+const BubbleTabBar = ({ state, descriptors, navigation, position }) => {
+    const { colors, shadows, borderRadius } = useTheme();
     const insets = useSafeAreaInsets();
+
+    // The magic: Interpolate the 0-1-2 position index directly to pixels
+    // unique to Material Top Tabs, 'position' tracks the swipe gesture perfectly
+    const translateX = position.interpolate({
+        inputRange: [0, 1, 2],
+        outputRange: [0, TAB_WIDTH, TAB_WIDTH * 2],
+    });
 
     return (
         <View style={[
@@ -88,10 +93,23 @@ const BubbleTabBar = ({ state, descriptors, navigation }) => {
                 backgroundColor: colors.surface,
                 borderTopColor: colors.border,
                 paddingBottom: insets.bottom,
-                height: 65 + insets.bottom, // Adjust height to include safe area
+                height: 60 + insets.bottom,
                 ...shadows.top
             }
         ]}>
+            {/* Sliding Background Pill */}
+            <Animated.View style={[
+                styles.slider,
+                {
+                    width: SLIDER_WIDTH,
+                    height: 40,
+                    backgroundColor: colors.primary + '20',
+                    borderRadius: borderRadius.round,
+                    transform: [{ translateX }], // Driven by swipe
+                    left: (TAB_WIDTH - SLIDER_WIDTH) / 2,
+                }
+            ]} />
+
             {state.routes.map((route, index) => {
                 const { options } = descriptors[route.key];
                 const label = options.tabBarLabel !== undefined
@@ -114,7 +132,6 @@ const BubbleTabBar = ({ state, descriptors, navigation }) => {
                     }
                 };
 
-                // Get icon from options (we'll define it there)
                 const IconFunc = options.tabBarIcon;
 
                 return (
@@ -136,44 +153,44 @@ const MainTabs = () => {
     const { colors } = useTheme();
 
     return (
-        <Tab.Navigator
-            tabBar={props => <BubbleTabBar {...props} />}
-            screenOptions={{
-                header: (props) => <GlobalHeader {...props} />, // Use GlobalHeader
-                headerShown: true, // Show header by default in tabs
-            }}
-        >
-            <Tab.Screen
-                name="HomeTab"
-                component={HomeScreen}
-                options={{
-                    headerShown: true, // Use GlobalHeader
-                    title: "Home", // Header Title (can be overridden by GlobalHeader logic)
-                    tabBarLabel: "Home",
-                    tabBarIcon: ({ color, focused }) => <HomeIcon color={color} filled={focused} />,
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+            {/* Global Header sits above the Swipeable Tabs */}
+            <GlobalHeader />
+
+            <Tab.Navigator
+                tabBarPosition="bottom"
+                tabBar={props => <BubbleTabBar {...props} />}
+                screenOptions={{
+                    swipeEnabled: true, // Enable swipe gestures
+                    animationEnabled: true, // Enable pager animation
                 }}
-            />
-            <Tab.Screen
-                name="SearchTab"
-                component={SearchScreen}
-                options={{
-                    headerShown: true, // Use GlobalHeader
-                    title: "Search",
-                    tabBarLabel: "Search",
-                    tabBarIcon: ({ color, focused }) => <SearchIcon color={color} filled={focused} />,
-                }}
-            />
-            <Tab.Screen
-                name="DownloadsTab"
-                component={DownloadsScreen}
-                options={{
-                    headerShown: true,
-                    title: "Downloads",
-                    tabBarLabel: "Downloads",
-                    tabBarIcon: ({ color, focused }) => <DownloadIcon color={color} filled={focused} />,
-                }}
-            />
-        </Tab.Navigator>
+            >
+                <Tab.Screen
+                    name="HomeTab"
+                    component={HomeScreen}
+                    options={{
+                        title: "Home",
+                        tabBarIcon: ({ color, focused }) => <HomeIcon color={color} filled={focused} />,
+                    }}
+                />
+                <Tab.Screen
+                    name="SearchTab"
+                    component={SearchScreen}
+                    options={{
+                        title: "Search",
+                        tabBarIcon: ({ color, focused }) => <SearchIcon color={color} filled={focused} />,
+                    }}
+                />
+                <Tab.Screen
+                    name="DownloadsTab"
+                    component={DownloadsScreen}
+                    options={{
+                        title: "Downloads",
+                        tabBarIcon: ({ color, focused }) => <DownloadIcon color={color} filled={focused} />,
+                    }}
+                />
+            </Tab.Navigator>
+        </View>
     );
 };
 
@@ -197,12 +214,9 @@ export const AppNavigator = () => {
         <NavigationContainer theme={navigationTheme}>
             <Stack.Navigator screenOptions={{
                 headerShown: false,
-                // If we want GlobalHeader on Stack screens:
-                // header: (props) => <GlobalHeader {...props} showBack={true} />
             }}>
                 <Stack.Screen name="Splash" component={SplashScreen} />
                 <Stack.Screen name="Main" component={MainTabs} />
-                {/* Details screens usually have their own header with back button */}
                 <Stack.Screen
                     name="Details"
                     component={DetailsScreen}
@@ -227,30 +241,31 @@ export const AppNavigator = () => {
 const styles = StyleSheet.create({
     tabBarContainer: {
         flexDirection: 'row',
-        height: 65, // Taller for bubble effect
         elevation: 10,
         alignItems: 'center',
-        justifyContent: 'space-around',
-        paddingHorizontal: 10,
+        paddingHorizontal: 0,
         borderTopWidth: 1,
+    },
+    slider: {
+        position: 'absolute',
+        top: 10,
+        zIndex: 0,
     },
     tabButton: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
         height: '100%',
+        zIndex: 1,
     },
-    tabBubble: {
+    tabContent: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        height: 40,
-        minWidth: 50,
     },
     tabLabel: {
         fontSize: 12,
         fontWeight: '600',
+        marginLeft: 8,
     }
 });
