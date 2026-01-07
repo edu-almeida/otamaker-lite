@@ -14,7 +14,7 @@ const SPACING_GUTTER = 6;
 const LIST_HORIZONTAL_PADDING = 12;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const ITEM_WIDTH = (SCREEN_WIDTH - (LIST_HORIZONTAL_PADDING * 2) - SIDEBAR_WIDTH - (SPACING_GUTTER * 2)) / COLUMNS_COUNT;
+const ITEM_WIDTH = (SCREEN_WIDTH - LIST_HORIZONTAL_PADDING - SIDEBAR_WIDTH - (SPACING_GUTTER * 2)) / COLUMNS_COUNT;
 
 // Extend Mock Data for demonstration
 const EXTENDED_MOCK_DATA = [
@@ -372,7 +372,7 @@ export const SearchScreen = ({ navigation }) => {
                     renderItem={renderGridRow}
                     renderSectionHeader={renderSectionHeader}
                     keyExtractor={(item, index) => `row-${index}`}
-                    contentContainerStyle={[styles.listContentContainer, { paddingHorizontal: LIST_HORIZONTAL_PADDING, paddingBottom: spacing.xl }]}
+                    contentContainerStyle={[styles.listContentContainer, { paddingLeft: LIST_HORIZONTAL_PADDING, paddingRight: 0, paddingBottom: spacing.xl }]}
                     stickySectionHeadersEnabled={false}
                     onViewableItemsChanged={onScrollVisibleItemsChanged}
                     showsVerticalScrollIndicator={false}

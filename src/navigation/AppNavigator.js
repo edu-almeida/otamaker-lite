@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Animated, Easing } from 'react-native';
-import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -17,19 +17,20 @@ import { HomeIcon, SearchIcon, DownloadIcon } from '../components/TabIcons';
 import { GlobalHeader } from '../components/GlobalHeader';
 import { useTheme } from '../contexts/ThemeContext';
 
-const Tab = createMaterialTopTabNavigator();
+const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Constant config for the slider
 const TAB_COUNT = 3;
+// Calculate width per tab (assuming equal distribution)
 const TAB_WIDTH = SCREEN_WIDTH / TAB_COUNT;
-const SLIDER_WIDTH = TAB_WIDTH - 24;
+const SLIDER_WIDTH = TAB_WIDTH - 24; // Padding 12 on each side for the "Pill" look
 
 const TabButton = ({ accessibilityState, children, onPress, icon, label, isFocused }) => {
     const { colors } = useTheme();
-    // Animation for Text Fade In
+    // Animation for Text/Icon color only
     const animation = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
@@ -44,7 +45,7 @@ const TabButton = ({ accessibilityState, children, onPress, icon, label, isFocus
     return (
         <TouchableOpacity
             onPress={onPress}
-            activeOpacity={1}
+            activeOpacity={1} // No opacity change on press, let the slider do the talking
             accessibilityRole="button"
             style={styles.tabButton}
         >
@@ -74,17 +75,21 @@ const TabButton = ({ accessibilityState, children, onPress, icon, label, isFocus
     );
 };
 
-// Custom Tab Bar using standard component prop + position
-const BubbleTabBar = ({ state, descriptors, navigation, position }) => {
+// Custom Tab Bar using standard component prop
+const BubbleTabBar = ({ state, descriptors, navigation }) => {
     const { colors, shadows, borderRadius } = useTheme();
     const insets = useSafeAreaInsets();
 
-    // The magic: Interpolate the 0-1-2 position index directly to pixels
-    // unique to Material Top Tabs, 'position' tracks the swipe gesture perfectly
-    const translateX = position.interpolate({
-        inputRange: [0, 1, 2],
-        outputRange: [0, TAB_WIDTH, TAB_WIDTH * 2],
-    });
+    // Animation for the Slider Position (Driven by Index, not Pager Position)
+    const translateValue = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        Animated.spring(translateValue, {
+            toValue: state.index * TAB_WIDTH,
+            velocity: 10,
+            useNativeDriver: true,
+        }).start();
+    }, [state.index]);
 
     return (
         <View style={[
@@ -102,10 +107,13 @@ const BubbleTabBar = ({ state, descriptors, navigation, position }) => {
                 styles.slider,
                 {
                     width: SLIDER_WIDTH,
-                    height: 40,
-                    backgroundColor: colors.primary + '20',
+                    height: 40, // Height of the pill
+                    backgroundColor: colors.primary + '20', // Light primary
                     borderRadius: borderRadius.round,
-                    transform: [{ translateX }], // Driven by swipe
+                    transform: [{ translateX: translateValue }],
+                    // Centering the slider within the tab slot:
+                    // Tab Slot is TAB_WIDTH wide. Slider is SLIDER_WIDTH wide.
+                    // Margin left to center it: (TAB_WIDTH - SLIDER_WIDTH) / 2
                     left: (TAB_WIDTH - SLIDER_WIDTH) / 2,
                 }
             ]} />
@@ -153,44 +161,41 @@ const MainTabs = () => {
     const { colors } = useTheme();
 
     return (
-        <View style={{ flex: 1, backgroundColor: colors.background }}>
-            {/* Global Header sits above the Swipeable Tabs */}
-            <GlobalHeader />
-
-            <Tab.Navigator
-                tabBarPosition="bottom"
-                tabBar={props => <BubbleTabBar {...props} />}
-                screenOptions={{
-                    swipeEnabled: true, // Enable swipe gestures
-                    animationEnabled: true, // Enable pager animation
+        <Tab.Navigator
+            tabBar={props => <BubbleTabBar {...props} />}
+            screenOptions={{
+                header: (props) => <GlobalHeader {...props} />,
+                headerShown: true,
+            }}
+        >
+            <Tab.Screen
+                name="HomeTab"
+                component={HomeScreen}
+                options={{
+                    headerShown: true,
+                    title: "Home",
+                    tabBarIcon: ({ color, focused }) => <HomeIcon color={color} filled={focused} />,
                 }}
-            >
-                <Tab.Screen
-                    name="HomeTab"
-                    component={HomeScreen}
-                    options={{
-                        title: "Home",
-                        tabBarIcon: ({ color, focused }) => <HomeIcon color={color} filled={focused} />,
-                    }}
-                />
-                <Tab.Screen
-                    name="SearchTab"
-                    component={SearchScreen}
-                    options={{
-                        title: "Search",
-                        tabBarIcon: ({ color, focused }) => <SearchIcon color={color} filled={focused} />,
-                    }}
-                />
-                <Tab.Screen
-                    name="DownloadsTab"
-                    component={DownloadsScreen}
-                    options={{
-                        title: "Downloads",
-                        tabBarIcon: ({ color, focused }) => <DownloadIcon color={color} filled={focused} />,
-                    }}
-                />
-            </Tab.Navigator>
-        </View>
+            />
+            <Tab.Screen
+                name="SearchTab"
+                component={SearchScreen}
+                options={{
+                    headerShown: true,
+                    title: "Search",
+                    tabBarIcon: ({ color, focused }) => <SearchIcon color={color} filled={focused} />,
+                }}
+            />
+            <Tab.Screen
+                name="DownloadsTab"
+                component={DownloadsScreen}
+                options={{
+                    headerShown: true,
+                    title: "Downloads",
+                    tabBarIcon: ({ color, focused }) => <DownloadIcon color={color} filled={focused} />,
+                }}
+            />
+        </Tab.Navigator>
     );
 };
 
@@ -248,7 +253,7 @@ const styles = StyleSheet.create({
     },
     slider: {
         position: 'absolute',
-        top: 10,
+        top: 10, // Vertically center within container
         zIndex: 0,
     },
     tabButton: {
